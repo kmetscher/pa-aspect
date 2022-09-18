@@ -6,7 +6,8 @@
  | (_| \__ \ |_) |  __/ (__| |_ 
   \__,_|___/ .__/ \___|\___|\__|
            | |                  
-           |_|                  ```
+           |_|                  
+```
 ## About
 Aspect is a terminal-based spectral visualizer written in C. This version makes use of the PulseAudio sound server development API.
 ## In progress
