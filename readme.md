@@ -1,12 +1,12 @@
 # PulseAudio Aspect
-`                            _   
+```                     _   
                            | |  
    __ _ ___ _ __   ___  ___| |_ 
   / _` / __| '_ \ / _ \/ __| __|
  | (_| \__ \ |_) |  __/ (__| |_ 
   \__,_|___/ .__/ \___|\___|\__|
            | |                  
-           |_|                  `
+           |_|                  ```
 ## About
 Aspect is a terminal-based spectral visualizer written in C. This version makes use of the PulseAudio sound server development API.
 ## In progress
