@@ -6,16 +6,42 @@
 #include <complex.h>
 #include <errno.h>
 #include <ncurses.h>
-#include <pthread.h>
 #include <pulse/simple.h>
 #include <pulse/error.h>
 #define BUFSIZE 1024
 #define PI 3.14159265359
+#define SAMPLERATE 44100
+typedef double complex cmplx;
 extern int errno;
 
-double *fourierTransform(uint16_t *buffer, int iter) {
+cmplx *cooleyTukey(cmplx *samples, int iter) {
+    
+}
+
+double *fourierTransform(uint16_t *buffer) {
+    /* Wraps Cooley-Tukey with preliminary math */
     double pi = PI;
-    typedef double complex cmplx;
+    cmplx fourier[(BUFSIZE / 2)];
+    cmplx samples[BUFSIZE];
+    cmplx twiddle[BUFSIZE];
+    for (unsigned int i = 0; i < BUFSIZE; i++) {
+        /* PCM data is in the real plane. Cooley-Tukey, and most 
+        * Fourier transforms, operate on complex inputs to produce 
+        * complex outputs. While there are implementations of the 
+        * algorithm with real inputs, the computational cost of 
+        * turning our real PCM samples into complex numbers with
+        * an imaginary value of 0 feels worth it for the algorithm
+        * to make sense at a glance, and to avoid strange math that
+        * invariably occurs when you dare to look in the face of i
+        * and sneeze. We can also normalize our samples here for the 
+        * 16-bit size 65,536. PulseAudio's simple API is also blocking 
+        * when returning samples, so we have time, right? */
+        double normal = (buffer[i] / 65536.0);
+        samples[i] = CMPLX(normal, 0);
+    }
+    /* Now, we can call Cooley-Tukey on the samples array, and store
+     * its result in our fourier array for further manipulation. */
+
 }
 
 void render(pa_simple *conn) {
@@ -58,7 +84,7 @@ int main(int argc, char* argv[]) {
     pa_sample_spec connspec;
     connspec.format = PA_SAMPLE_S16LE;
     connspec.channels = 1;
-    connspec.rate = 44100;
+    connspec.rate = SAMPLERATE;
     char ch;
     int halt = 0;
     int error;
