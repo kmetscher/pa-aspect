@@ -8,26 +8,18 @@
 #include <ncurses.h>
 #include <pulse/simple.h>
 #include <pulse/error.h>
+#include <fftw3.h>
 #define BUFSIZE 1024
 #define PI 3.14159265359
 #define SAMPLERATE 44100
 typedef double complex cmplx;
 extern int errno;
 
-cmplx *cooleyTukey(cmplx *samples, int iter) {
-    
-}
-
-double *fourierTransform(uint16_t *buffer) {
-    /* Wraps Cooley-Tukey with preliminary math */
-    double pi = PI;
-    cmplx fourier[(BUFSIZE / 2)];
-    cmplx samples[BUFSIZE];
-    cmplx twiddle[BUFSIZE];
+void fourierTransform(uint16_t *buffer, fftw_complex *samples, fftw_plan plan) {
     for (unsigned int i = 0; i < BUFSIZE; i++) {
-        /* PCM data is in the real plane. Cooley-Tukey, and most 
-        * Fourier transforms, operate on complex inputs to produce 
-        * complex outputs. While there are implementations of the 
+        /* PCM data is in the real plane. Most Fourier transforms 
+        * operate on complex inputs to produce complex
+        * outputs. While there are implementations of the 
         * algorithm with real inputs, the computational cost of 
         * turning our real PCM samples into complex numbers with
         * an imaginary value of 0 feels worth it for the algorithm
@@ -39,33 +31,21 @@ double *fourierTransform(uint16_t *buffer) {
         double normal = (buffer[i] / 65536.0);
         samples[i] = CMPLX(normal, 0);
     }
-    /* Now, we can call Cooley-Tukey on the samples array, and store
-     * its result in our fourier array for further manipulation. */
-
+    /* Time for the Fastest Fourier Transform in the West */
+    fftw_execute(plan);
 }
 
-void render(pa_simple *conn) {
-    /* Initialize a power-2 array to hold discrete frequency ranges 
-     * in preparation for a Fast Fourier Transform (FFT) on the 
-     * PCM data received from the opened capture stream. The read 
-     * operation writes to the declared buffer chunkwise so the 
-     * sample can be operated on in close to real time. The array that
-     * will contain the complex values as a result of the transform
-     * is initialized with half the number of sample points in our 
-     * buffer, since we can safely discard either hand side of the 
-     * resulting FFT array without sacrificing useful information. */
-    int spectra[8];
+void render(pa_simple *conn, fftw_complex *samples, fftw_plan plan) {
     uint16_t buffer[BUFSIZE];
-        pa_simple_read(conn, buffer, sizeof(buffer), NULL);
-        for (unsigned int i = 0; i < sizeof(buffer); i++) {
-            printw("%d", buffer[i]);
-            refresh();
-            clear();
-            refresh();
+    pa_simple_read(conn, buffer, sizeof(buffer), NULL);
+    fourierTransform(buffer, samples, plan);
+    for (unsigned int i = 0; i < BUFSIZE; i += 2) {
+        printw("%d, %d", creal(samples[i]), cimag(samples[i]));
     }
+    refresh();
 }
 
-void cleanup(pa_simple *conn) {
+void cleanup(pa_simple *conn, fftw_complex *samples, fftw_plan plan) {
     int error;
     if (conn) {
         pa_simple_free(conn);
@@ -77,6 +57,8 @@ void cleanup(pa_simple *conn) {
         endwin();
         exit(error);
     }
+    fftw_free(samples);
+    fftw_destroy_plan(plan);
 }
 
 int main(int argc, char* argv[]) {
@@ -85,9 +67,14 @@ int main(int argc, char* argv[]) {
     connspec.format = PA_SAMPLE_S16LE;
     connspec.channels = 1;
     connspec.rate = SAMPLERATE;
+    fftw_complex *samples;
+    fftw_plan plan;
     char ch;
     int halt = 0;
     int error;
+
+    samples = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * BUFSIZE);
+    plan = fftw_plan_dft_1d(BUFSIZE, samples, samples, FFTW_FORWARD, FFTW_MEASURE);
 
     /* Create a new recording connection to the server. 
      * NULL: Default server
@@ -121,11 +108,11 @@ int main(int argc, char* argv[]) {
         if (ch != ERR) {
             halt = 1;
         }
-        render(conn);
+        render(conn, samples, plan);
     }
 
     /* Clean up our stream and end curses mode */
-    cleanup(conn);
+    cleanup(conn, samples, plan);
 
     return 0;
 }
