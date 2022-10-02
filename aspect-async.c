@@ -3,15 +3,22 @@
 #include <pulse/pulseaudio.h>
 #include <complex.h>
 #include <fftw3.h>
-#define FORMAT PA_SAMPLE_S16LE
+#define FORMAT PA_SAMPLE_FLOAT32LE
 #define SAMPLERATE 44100
 #define CHANNELS 1
 #define BUFSIZE 1024
 
-// Callback forward declarations
+static void *buffer = NULL;
+static size_t buf_len = 0;
+static size_t buf_index = 0;
+static pa_io_event *stdio_event = NULL;
+
+// Callbacks
 void context_state_cb(pa_context *context, void *main_loop);
 void stream_state_cb(pa_stream *stream, void *data);
-void stream_write_cb(pa_stream *stream, size_t bytes, void *stream_data);
+static void stream_read_cb(pa_stream *stream, size_t len, void *user_data) {
+    const void *stream_data;
+}
 
 int main(int argc, char argv[]) {
     // Get and lock the main loop
@@ -45,7 +52,7 @@ int main(int argc, char argv[]) {
     // Set callback and connect stream to context
     void *stream_data = NULL;
     pa_stream_set_state_callback(stream, stream_state_cb, main_loop);
-    pa_stream_set_read_callback(stream, stream_write_cb, stream_data);
+    pa_stream_set_read_callback(stream, stream_read_cb, stream_data);
     // FIXME: list sources and query user for their choice
     pa_stream_connect_record(stream, "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink.monitor", NULL, 0);
     // Spin until stream ready
@@ -56,31 +63,6 @@ int main(int argc, char argv[]) {
         }
         pa_threaded_mainloop_wait(main_loop);
     }
-    for (unsigned int i = 0; i < 5; i++) {
-        size_t n;
-        while (1) {
-            pa_stream_peek(stream, stream_data, &n);
-            if (n == 0) {
-                pa_threaded_mainloop_wait(main_loop);
-                continue;
-            }
-            else {
-                printf("%d", stream_data);
-            }
-            pa_stream_drop(stream);
-        }
-    }
-
-    void context_state_cb(pa_context *context, void *main_loop) {
-        pa_threaded_mainloop_signal(main_loop, 0);
-    }
-    void stream_state_cb(pa_stream *stream, void *data) {
-        pa_threaded_mainloop_signal(main_loop, 0);
-    }
-    void stream_write_cb(pa_stream *stream, size_t bytes, void *stream_data) {
-        pa_threaded_mainloop_signal(main_loop, 0);
-    }
-
 
     pa_stream_disconnect(stream);
     pa_context_disconnect(context);
