@@ -5,8 +5,8 @@
 #include <fftw3.h>
 #include <signal.h>
 
-#define FORMAT PA_SAMPLE_FLOAT32LE
-#define SAMPLERATE 44100
+#define FORMAT PA_SAMPLE_S16LE
+#define SAMPLERATE 48000
 #define CHANNELS 1
 #define BUFSIZE 1024
 
@@ -35,7 +35,7 @@ static void stream_state_cb(pa_stream *stream, void *data) {
 
 static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
     if (pa_stream_readable_size(stream) > 0) {
-        uint16_t *stream_data = NULL;
+        int16_t *stream_data = NULL;
         if (pa_stream_peek(stream, (const void**)&stream_data, &bytes) != 0) {
             fprintf(stderr, "Peek failed\n");
             return;
@@ -50,14 +50,14 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
             printf("Buffer seemingly empty\n");
             return;
         }
-        printf("%u\n", stream_data);
+        printf("%d\n", *stream_data);
         if (pa_stream_drop(stream) != 0) {
             fprintf(stderr, "Dropping after peek failed\n");
         }
     }
 }
 
-void context_state_cb(pa_context *context, void *main_loop) {
+static void context_state_cb(pa_context *context, void *main_loop) {
     pa_context_state_t STATE = pa_context_get_state(context);
     switch (STATE) {
         case PA_CONTEXT_READY:
@@ -102,7 +102,6 @@ int main(int argc, char argv[]) {
     pa_mainloop_run(main_loop, NULL);
     printf("After loop, tearing down\n");
 
-    quit:
     pa_context_disconnect(context);
     pa_context_unref(context);
 
