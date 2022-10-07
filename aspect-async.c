@@ -5,13 +5,14 @@
 #include <fftw3.h>
 #include <signal.h>
 #include <complex.h>
+#include <math.h>
 
 #define FORMAT PA_SAMPLE_S16LE
 #define SAMPLERATE 48000
 // FIXME: set format and sampling based on chosen sink / pa params
 #define CHANNELS 1
-#define BUFSIZE 64
-#define OUTSIZE 31
+#define BUFSIZE 32
+#define OUTSIZE 15
 #define PEAK 32767.0
 
 static pa_mainloop *main_loop = NULL;
@@ -33,8 +34,7 @@ static void stream_state_cb(pa_stream *stream, void *data) {
         case PA_STREAM_FAILED: 
             fprintf(stderr, "Stream failure\n");
             break;
-        default:
-            printf("Stream state: %d\n", STATE); 
+        default: 
             break;
     }
 }
@@ -47,38 +47,41 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
     if (pa_stream_readable_size(stream) > 0) {
         int16_t *stream_data = NULL;
         if (pa_stream_peek(stream, (const void**)&stream_data, &bytes) != 0) {
-            printf("Peek failed\n");
+            fprintf(stderr, "Peek failed\n");
             refresh();
             return;
         }
         if (stream_data == NULL && bytes > 0) {
             if (pa_stream_drop(stream) != 0) {
-                printf("Dropping hole failed\n");
+                fprintf(stderr, "Dropping hole failed\n");
+                // I wish someone would drop my hole
                 refresh();
                 return;
             }
         }
         if (stream_data == NULL && bytes == 0) {
-            printf("Buffer seemingly empty\n");
+            fprintf(stderr, "Buffer seemingly empty\n");
             refresh();
             return;
         }
         if (buf_index == BUFSIZE) {
-            printf("Input buffer full, executing DFT\n");
-            refresh();
+            clear();
             fftw_execute(plan);
-            printf("Plan executed\n");
-            refresh();
             for (unsigned int i = 0; i < OUTSIZE; i++) {
-                printf("%f+%fi at output array index %d\n", 
-                    creal(out[i]), cimag(out[i]), i);
+                double magnitude = sqrt(
+                    (creal(out[i]) * creal(out[i])) + 
+                    (cimag(out[i]) * cimag(out[i])));
+                int bar_height = floor(magnitude * 32);
+                for (unsigned int j = 0; j < bar_height; j++) {
+                    printw("X");
+                }
+                printw("\n");
                 refresh();
             }
             buf_index = 0;
         }
         double normal_sample = (*stream_data / PEAK);
         in[buf_index] = normal_sample;
-        printf("index %d of input array: %f\n", buf_index, in[buf_index]);
         refresh();
         buf_index++;
         if (pa_stream_drop(stream) != 0) {
@@ -96,7 +99,6 @@ static void context_state_cb(pa_context *context, void *main_loop) {
                 fprintf(stderr, "Stream creation failure");
                 return;
             }
-            printf("In context state callback, connecting stream.\n");
             pa_stream_set_state_callback(stream, stream_state_cb, NULL);
             pa_stream_set_read_callback(stream, stream_read_cb, NULL);
             pa_stream_connect_record(stream, "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink.monitor", NULL, 0);
