@@ -11,8 +11,8 @@
 #define SAMPLERATE 48000
 // FIXME: set format and sampling based on chosen sink / pa params
 #define CHANNELS 1
-#define BUFSIZE 32
-#define OUTSIZE 15
+#define BUFSIZE 20
+#define OUTSIZE 9
 #define PEAK 32767.0
 
 static pa_mainloop *main_loop = NULL;
@@ -44,7 +44,7 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
         pa_mainloop_quit(main_loop, 0);
         return;
     }
-    if (pa_stream_readable_size(stream) > 0) {
+    while (pa_stream_readable_size(stream) > 0) {
         int16_t *stream_data = NULL;
         if (pa_stream_peek(stream, (const void**)&stream_data, &bytes) != 0) {
             fprintf(stderr, "Peek failed\n");
@@ -67,15 +67,16 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
         if (buf_index == BUFSIZE) {
             clear();
             fftw_execute(plan);
-            for (unsigned int i = 0; i < OUTSIZE; i++) {
+            for (unsigned int i = 1; i < OUTSIZE; i++) {
+                // Starting from 1 because the DC at index 0 is just average amplitude
                 double magnitude = sqrt(
                     (creal(out[i]) * creal(out[i])) + 
                     (cimag(out[i]) * cimag(out[i])));
-                int bar_height = floor(magnitude * 32);
+                int bar_height = floor(magnitude * 20);
                 for (unsigned int j = 0; j < bar_height; j++) {
-                    printw("X");
+                    printw("#");
                 }
-                printw("\n");
+                printw("#\n");
                 refresh();
             }
             buf_index = 0;
