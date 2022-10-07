@@ -13,13 +13,14 @@ Aspect is a terminal-based spectral visualizer written in C. It applies the Disc
 
 This version makes use of the PulseAudio sound server development API and is intended for use on those POSIX machines running PulseAudio (hence pa-aspect). I intend to build versions of the visualizer that work with other sound servers/implementations in the future, such as with PipeWire and ALSA.
 ## In progress
-- Asynchronous API usage and recording capabilities for capturing output samples
-- Implementation of the Fastest Fourier Transform in the West
+- Determining how to reduce client-side latency in retrieving samples. The server only reads data out when the read callback recognizes there's data to be read, and a DFT requires a non-negligible amount of samples in its input buffer to be both accurate and also spit out remotely interesting data. Presently the delay in acquiring enough samples for a compelling frequency bin set (>64) is taking too long
+- "Graphical" representation of frequency amplitudes with color and ASCII art in curses windows
 ## Planned
-- Spectral visualization of discrete frequencies sorted into a handful of bins (determined on startup or in real time?)
-- Real-time modification of frequency bands
 - User selection of PulseAudio sinks (monitor specific applications/sinks instead of all sounds)
 - User definition of visual appearance (amplitude gradients, bar width, etc)
+## Possibilities
+- Wrapping in an external shell application to make drawing easier; possibly "smooth" rendering out to make the delay in buffer retrieval less obvious?
+- Asynchronous math/display operations to allow the buffer to keep filling while the overhead of the DFT (negligible) and curses (significant) blocks. Make display operations non-blocking?
 ## A note on style
 The PulseAudio C API uses the snake_case convention. I am following the same convention within any C files that interface with the sound server for the sake of consistency. Elsewhere within the project, I will likely use camelCase out of habit.
 ## Other development notes
