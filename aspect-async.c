@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <ncurses.h>
+#include <menu.h>
 #include <pulse/pulseaudio.h>
 #include <complex.h>
 #include <fftw3.h>
 #include <signal.h>
-#include <complex.h>
 #include <math.h>
+#include <string.h>
 
 #define FORMAT PA_SAMPLE_S16LE
 #define SAMPLERATE 48000
@@ -14,6 +15,11 @@
 #define BUFSIZE 20
 #define OUTSIZE 9
 #define PEAK 32767.0
+
+typedef struct sink {
+    char monitor[256];
+    char desc[256];
+};
 
 static pa_mainloop *main_loop = NULL;
 static pa_context *context = NULL;
@@ -24,6 +30,10 @@ static pa_channel_map channel_map;
 static int buf_index = 0;
 static double in[BUFSIZE];
 static double complex out[OUTSIZE];
+static struct sink **sinks;
+static int sink_count = 0;
+static int sink_index = 0;
+static bool sink_cb_signal = false;
 
 fftw_plan plan;
 
@@ -91,10 +101,76 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
     }
 }
 
+static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol, void *user_data) {
+    if (eol < 0) {
+        fprintf(stderr, "Sink info callback failure\n");
+        return;
+    }
+    if (eol) {
+        printw("Found nothing\n");
+        return;
+    }
+    sink_count++;
+    realloc(sinks, sizeof(struct sink) * sink_count);
+    strcpy(sinks[sink_index]->monitor, info->monitor_source_name);
+    strcpy(sinks[sink_index]->desc, info->description);
+    sink_index++;
+}
+
 static void context_state_cb(pa_context *context, void *main_loop) {
     pa_context_state_t STATE = pa_context_get_state(context);
     switch (STATE) {
         case PA_CONTEXT_READY:
+        // there's a bunch of shit happening here i promise i'll explain it someday
+            nodelay(stdscr, false);
+            cbreak();
+            noecho();
+            keypad(stdscr, true);
+            char chosen_sink[256];
+            bool exit_menu = false;
+
+            pa_context_get_sink_info_list(context, &sink_info_cb, sinks);
+
+            ITEM **sink_items;
+            ITEM *curr_sink;
+            MENU *sink_menu;
+            int ch;
+
+            sink_items = (ITEM**) calloc(sink_count + 1, sizeof(ITEM*));
+            for (unsigned int i = 0; i < sink_count; i++) {
+                sink_items[i] = new_item(sinks[i]->desc, sinks[i]->monitor);
+            }
+            sink_items[sink_count] = (ITEM*) NULL;
+            sink_menu = new_menu((ITEM**) sink_items);
+            mvprintw(LINES - 2, 0, "Found %d running sinks.\n", sink_count);
+            post_menu(sink_menu);
+            refresh();
+
+            while (((ch = getch()) != KEY_EXIT) || !exit_menu) {
+                switch(ch) {
+                    case KEY_DOWN:
+                        menu_driver(sink_menu, REQ_DOWN_ITEM);
+                        break;
+                    case KEY_UP:
+                        menu_driver(sink_menu, REQ_UP_ITEM);
+                        break;
+                    case KEY_ENTER:
+                    case ' ':
+                    case '\n':
+                        strcpy(chosen_sink, item_description(current_item(sink_menu)));
+                        exit_menu = true;
+                        break;
+                }
+            }
+            unpost_menu(sink_menu);
+            for (unsigned int i = 0; i < sink_count; i++) {
+                free_item(sink_items[i]);
+            }
+            free_menu(sink_menu);
+            free(sinks);
+            clear();
+            refresh();
+
             pa_channel_map_init_mono(&channel_map);
             if (!(stream = pa_stream_new(context, "aspect", &sample_spec, &channel_map))) {
                 fprintf(stderr, "Stream creation failure");
@@ -102,7 +178,7 @@ static void context_state_cb(pa_context *context, void *main_loop) {
             }
             pa_stream_set_state_callback(stream, stream_state_cb, NULL);
             pa_stream_set_read_callback(stream, stream_read_cb, NULL);
-            pa_stream_connect_record(stream, "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink.monitor", NULL, 0);
+            pa_stream_connect_record(stream, chosen_sink, NULL, 0);
             break;
         case PA_CONTEXT_FAILED: 
             fprintf(stderr, "Context failure");
