@@ -10,19 +10,21 @@
 #define SAMPLERATE 48000
 // FIXME: set format and sampling based on chosen sink / pa params
 #define CHANNELS 1
-#define BUFSIZE 128
-#define OUTSIZE 63
+#define BUFSIZE 64
+#define OUTSIZE 31
 #define PEAK 32767.0
 
+static pa_mainloop *main_loop = NULL;
 static pa_context *context = NULL;
 static pa_stream *stream = NULL;
 static pa_mainloop_api *loop_api = NULL;
 static pa_sample_spec sample_spec = {.format = FORMAT, .rate = SAMPLERATE, .channels = CHANNELS};
 static pa_channel_map channel_map;
+static int buf_index = 0;
 static double in[BUFSIZE];
 static double complex out[OUTSIZE];
-static int buf_index = 0;
-static fftw_plan plan;
+
+fftw_plan plan;
 
 static void stream_state_cb(pa_stream *stream, void *data) {
     const pa_stream_state_t STATE = pa_stream_get_state(stream);
@@ -38,36 +40,46 @@ static void stream_state_cb(pa_stream *stream, void *data) {
 }
 
 static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
+    if (getch() != ERR) {
+        pa_mainloop_quit(main_loop, 0);
+        return;
+    }
     if (pa_stream_readable_size(stream) > 0) {
         int16_t *stream_data = NULL;
         if (pa_stream_peek(stream, (const void**)&stream_data, &bytes) != 0) {
-            fprintf(stderr, "Peek failed\n");
+            printf("Peek failed\n");
+            refresh();
             return;
         }
         if (stream_data == NULL && bytes > 0) {
             if (pa_stream_drop(stream) != 0) {
-                fprintf(stderr, "Dropping hole failed\n");
+                printf("Dropping hole failed\n");
+                refresh();
                 return;
             }
         }
         if (stream_data == NULL && bytes == 0) {
             printf("Buffer seemingly empty\n");
+            refresh();
             return;
         }
         if (buf_index == BUFSIZE) {
             printf("Input buffer full, executing DFT\n");
+            refresh();
             fftw_execute(plan);
+            printf("Plan executed\n");
+            refresh();
             for (unsigned int i = 0; i < OUTSIZE; i++) {
                 printf("%f+%fi at output array index %d\n", 
                     creal(out[i]), cimag(out[i]), i);
+                refresh();
             }
             buf_index = 0;
         }
-        printf("Signed int real sample: %d\n", *stream_data);
         double normal_sample = (*stream_data / PEAK);
         in[buf_index] = normal_sample;
-        printf("Normalized double sample at index %d of input array: %f\n", 
-            buf_index, in[buf_index]);
+        printf("index %d of input array: %f\n", buf_index, in[buf_index]);
+        refresh();
         buf_index++;
         if (pa_stream_drop(stream) != 0) {
             fprintf(stderr, "Dropping after peek failed\n");
@@ -102,7 +114,7 @@ int main(int argc, char argv[]) {
     plan = fftw_plan_dft_r2c_1d(BUFSIZE, in, out, FFTW_MEASURE);
 
     // Get the main loop
-    pa_mainloop *main_loop = pa_mainloop_new();
+    main_loop = pa_mainloop_new();
     printf("Made loop\n");
     
     // Get the API
@@ -119,16 +131,25 @@ int main(int argc, char argv[]) {
     pa_context_connect(context, NULL, PA_CONTEXT_NOFLAGS, NULL);
     printf("Connected context\n");
 
+    // Start curses
+    initscr();
+    nodelay(stdscr, true);
+    
     // Iterate forever
     pa_mainloop_run(main_loop, NULL);
+
+    endwin();
     printf("After loop, tearing down\n");
 
-    fftw_destroy_plan(plan);
+    plan = NULL;
+    printf("Destroyed plan\n");
 
     pa_context_disconnect(context);
+    printf("Context disconnected\n");
     pa_context_unref(context);
+    printf("Context unref'd\n");
 
-    pa_mainloop_quit(main_loop, 0);
     pa_mainloop_free(main_loop);
+    printf("Main loop freed\n");
     return 0;
 }

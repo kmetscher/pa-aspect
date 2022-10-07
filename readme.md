@@ -1,5 +1,5 @@
 # PulseAudio Aspect
-```                     _   
+```                         _   
                            | |  
    __ _ ___ _ __   ___  ___| |_ 
   / _` / __| '_ \ / _ \/ __| __|
@@ -25,6 +25,7 @@ The PulseAudio C API uses the snake_case convention. I am following the same con
 ## Other development notes
 - Building on Ubuntu 20.04, Intel x86-64
 - Non-standard includes: ncurses, pulse, fftw3 
+- I'm tracking the compiled binary alongside source for analysis
 ## Links
 - [FFTW](http://www.fftw.org/)
 - [My website](https://kylemetscher.com)
