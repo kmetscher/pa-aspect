@@ -102,6 +102,7 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
 }
 
 static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol, void *user_data) {
+    printf("%u %s", info->index, info->name);
     if (eol < 0) {
         fprintf(stderr, "Sink info callback failure\n");
         return;
