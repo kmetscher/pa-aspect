@@ -44,5 +44,6 @@ PulseAudio Aspect is licensed under the terms of the GNU GPL version 3 or later.
 - [FFTW](http://www.fftw.org/)
 - [My website](https://kylemetscher.com)
 - [My LinkedIn](https://linkedin.com/in/c0w80yd4n)
+- [ncurses](https://invisible-island.net/ncurses/)
 - [PulseAudio docs](https://freedesktop.org/software/pulseaudio/doxygen/index.html)
 - [IPChicken](https://ipchicken.com)
