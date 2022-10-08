@@ -123,7 +123,7 @@ static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol,
         }
         sink_items[sink_count] = (ITEM*) NULL;
         sink_menu = new_menu((ITEM**) sink_items);
-        mvprintw(LINES - 2, 0, "Found %d running sinks.\n", sink_count);
+        mvprintw(LINES - 2, 0, "Found %d sinks.\nSelect one with up/down and strike space/enter to select.", sink_count);
         menu_opts_off(sink_menu, O_SHOWDESC);
         post_menu(sink_menu);
         refresh();
@@ -141,6 +141,8 @@ static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol,
                     refresh();
                     break;
                 case ' ':
+                case KEY_ENTER:
+                case '\n':
                     exit_menu = true;
                     refresh();
                     break;
