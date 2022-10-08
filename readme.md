@@ -12,6 +12,8 @@
 Aspect is a terminal-based spectral visualizer written in C. It applies the Discrete Fourier Transform (DFT) to a series of audio samples captured from a playback sink to visualize frequency ranges in near-real time. The DFT is calculated using a Fast Fourier Transform (FFT) algorithm implemented with the FFTW library. 
 
 This version makes use of the PulseAudio sound server development API and is intended for use on those POSIX machines running PulseAudio (hence pa-aspect). I intend to build versions of the visualizer that work with other sound servers/implementations in the future, such as with PipeWire and ALSA.
+
+pa-aspect is in a FUNCTIONAL, but not COMPLETE state. You can build and run it on your machine and watch some pound signs dance to the beat of your music. I intend to build this application into an aesthetically compelling and performant state. While pa-aspect is still in development, I also cannot make any promises about its memory and thread safety. State and threads are managed -- mostly -- in the robust PulseAudio development API callback system and the ncurses library, but the possibility of leakage or races can't be ignored through my own or external fault.
 ## Installation from source
 - Use your favorite C compiler, like GCC
 - Compile time dependencies: complex, fftw3, math, ncurses, pulse; check your distribution's package repositories or the links below
