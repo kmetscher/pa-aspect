@@ -17,9 +17,9 @@
 #define PEAK 32767.0
 
 typedef struct sink {
+    char description[256];
     char monitor[256];
-    char desc[256];
-};
+} sink;
 
 static pa_mainloop *main_loop = NULL;
 static pa_context *context = NULL;
@@ -30,11 +30,11 @@ static pa_channel_map channel_map;
 static int buf_index = 0;
 static double in[BUFSIZE];
 static double complex out[OUTSIZE];
-static struct sink **sinks;
 static int sink_count = 0;
 static int sink_index = 0;
 static bool sink_cb_signal = false;
 
+sink *sinks;
 fftw_plan plan;
 
 static void stream_state_cb(pa_stream *stream, void *data) {
@@ -102,84 +102,87 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
 }
 
 static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol, void *user_data) {
-    printf("%u %s", info->index, info->name);
     if (eol < 0) {
         fprintf(stderr, "Sink info callback failure\n");
         return;
     }
-    if (eol) {
-        printw("Found nothing\n");
+    if (eol) { // there's a bunch of shit happening here i promise i'll explain it someday
+        cbreak();
+        noecho();
+        keypad(stdscr, true);
+        char chosen_sink[256];
+        bool exit_menu = false;
+        int ch;
+        ITEM **sink_items;
+        MENU *sink_menu;
+        ITEM *curr_sink;
+        
+        sink_items = (ITEM**) calloc(sink_count + 1, sizeof(ITEM*));
+        for (unsigned int i = 0; i < sink_count; i++) {
+            sink_items[i] = new_item(sinks[i].description, sinks[i].monitor);
+        }
+        sink_items[sink_count] = (ITEM*) NULL;
+        sink_menu = new_menu((ITEM**) sink_items);
+        mvprintw(LINES - 2, 0, "Found %d running sinks.\n", sink_count);
+        menu_opts_off(sink_menu, O_SHOWDESC);
+        post_menu(sink_menu);
+        refresh();
+        nodelay(stdscr, true);
+        ch = getch();
+        while (!exit_menu) {
+            ch = getch();
+            switch(ch) {
+                case KEY_DOWN:
+                    menu_driver(sink_menu, REQ_DOWN_ITEM);
+                    refresh();
+                    break;
+                case KEY_UP:
+                    menu_driver(sink_menu, REQ_UP_ITEM);
+                    refresh();
+                    break;
+                case ' ':
+                    exit_menu = true;
+                    refresh();
+                    break;
+            }
+        }
+        strcpy(chosen_sink, item_description(current_item(sink_menu)));
+        unpost_menu(sink_menu);
+        for (unsigned int i = 0; i < sink_count; i++) {
+            free_item(sink_items[i]);
+        }
+        free_menu(sink_menu);
+        free(sinks);
+        clear();
+        refresh();
+
+        pa_channel_map_init_mono(&channel_map);
+        if (!(stream = pa_stream_new(context, "aspect", &sample_spec, &channel_map))) {
+            fprintf(stderr, "Stream creation failure");
+            return;
+        }
+        pa_stream_set_state_callback(stream, stream_state_cb, NULL);
+        pa_stream_set_read_callback(stream, stream_read_cb, NULL);
+        pa_stream_connect_record(stream, chosen_sink/*"alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink.monitor"*/, NULL, 0);
+        refresh();
         return;
     }
-    sink_count++;
-    realloc(sinks, sizeof(struct sink) * sink_count);
-    strcpy(sinks[sink_index]->monitor, info->monitor_source_name);
-    strcpy(sinks[sink_index]->desc, info->description);
-    sink_index++;
+    else {
+        sink_count++;
+        sinks = realloc(sinks, sink_count * sizeof(sink));
+        strcpy(sinks[sink_index].description, info->description);
+        strcpy(sinks[sink_index].monitor, info->monitor_source_name);
+        refresh();
+        sink_index++;
+        return;
+    }
 }
 
 static void context_state_cb(pa_context *context, void *main_loop) {
     pa_context_state_t STATE = pa_context_get_state(context);
     switch (STATE) {
         case PA_CONTEXT_READY:
-        // there's a bunch of shit happening here i promise i'll explain it someday
-            nodelay(stdscr, false);
-            cbreak();
-            noecho();
-            keypad(stdscr, true);
-            char chosen_sink[256];
-            bool exit_menu = false;
-
             pa_context_get_sink_info_list(context, &sink_info_cb, sinks);
-
-            ITEM **sink_items;
-            ITEM *curr_sink;
-            MENU *sink_menu;
-            int ch;
-
-            sink_items = (ITEM**) calloc(sink_count + 1, sizeof(ITEM*));
-            for (unsigned int i = 0; i < sink_count; i++) {
-                sink_items[i] = new_item(sinks[i]->desc, sinks[i]->monitor);
-            }
-            sink_items[sink_count] = (ITEM*) NULL;
-            sink_menu = new_menu((ITEM**) sink_items);
-            mvprintw(LINES - 2, 0, "Found %d running sinks.\n", sink_count);
-            post_menu(sink_menu);
-            refresh();
-
-            while (((ch = getch()) != KEY_EXIT) || !exit_menu) {
-                switch(ch) {
-                    case KEY_DOWN:
-                        menu_driver(sink_menu, REQ_DOWN_ITEM);
-                        break;
-                    case KEY_UP:
-                        menu_driver(sink_menu, REQ_UP_ITEM);
-                        break;
-                    case KEY_ENTER:
-                    case ' ':
-                    case '\n':
-                        strcpy(chosen_sink, item_description(current_item(sink_menu)));
-                        exit_menu = true;
-                        break;
-                }
-            }
-            unpost_menu(sink_menu);
-            for (unsigned int i = 0; i < sink_count; i++) {
-                free_item(sink_items[i]);
-            }
-            free_menu(sink_menu);
-            free(sinks);
-            clear();
-            refresh();
-
-            pa_channel_map_init_mono(&channel_map);
-            if (!(stream = pa_stream_new(context, "aspect", &sample_spec, &channel_map))) {
-                fprintf(stderr, "Stream creation failure");
-                return;
-            }
-            pa_stream_set_state_callback(stream, stream_state_cb, NULL);
-            pa_stream_set_read_callback(stream, stream_read_cb, NULL);
-            pa_stream_connect_record(stream, chosen_sink, NULL, 0);
             break;
         case PA_CONTEXT_FAILED: 
             fprintf(stderr, "Context failure");
