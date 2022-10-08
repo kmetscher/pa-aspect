@@ -113,6 +113,8 @@ static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol,
         char chosen_sink[256];
         bool exit_menu = false;
         int ch;
+        WINDOW *startup_window;
+        WINDOW *menu_window;
         ITEM **sink_items;
         MENU *sink_menu;
         ITEM *curr_sink;
@@ -123,8 +125,11 @@ static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol,
         }
         sink_items[sink_count] = (ITEM*) NULL;
         sink_menu = new_menu((ITEM**) sink_items);
-        mvprintw(LINES - 2, 0, "Found %d sinks.\nSelect one with up/down and strike space/enter to select.", sink_count);
         menu_opts_off(sink_menu, O_SHOWDESC);
+        mvprintw(sink_count + 1, 0, "                           | |  \n   __ _ ___ _ __   ___  ___| |_ \n  / _` / __| '_ \\ / _ \\/ __| __|\n | (_| \\__ \\ |_) |  __/ (__| |_ \n  \\__,_|___/ .__/ \\___|\\___|\\__|\n           | |                  \n           |_|\n");
+        // LOL
+        printw("\nPulseAudio Aspect\nCopyright 2022 Kyle Metscher\nAspect is free software under the terms of the GNU GPL.\n");
+        printw("Found %d sinks.\nChoose a sink with up/down and select with space/enter.\n", sink_count);
         post_menu(sink_menu);
         refresh();
         nodelay(stdscr, true);
