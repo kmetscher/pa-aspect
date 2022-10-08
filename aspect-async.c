@@ -1,3 +1,13 @@
+/* Copyright 2022 Kyle Metscher
+ * howdy@kylemetscher.com | https://github.com/kmetscher 
+ * PulseAudio Aspect, part of the Aspect project, is free software: you can redistribute it and/or modify it 
+ * under the terms of the GNU General Public License as published by the Free Software Foundation, either version
+ * 3 of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the 
+ * implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+ * You should have received a copy of the GNU General Public License along with this program. 
+ * If not, see <https://www.gnu.org/licenses/>. */
+
 #include <stdio.h>
 #include <ncurses.h>
 #include <menu.h>
@@ -128,7 +138,7 @@ static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol,
         menu_opts_off(sink_menu, O_SHOWDESC);
         mvprintw(sink_count + 1, 0, "                           | |  \n   __ _ ___ _ __   ___  ___| |_ \n  / _` / __| '_ \\ / _ \\/ __| __|\n | (_| \\__ \\ |_) |  __/ (__| |_ \n  \\__,_|___/ .__/ \\___|\\___|\\__|\n           | |                  \n           |_|\n");
         // LOL
-        printw("\nPulseAudio Aspect\nCopyright 2022 Kyle Metscher\nAspect is free software under the terms of the GNU GPL.\n");
+        printw("\nPulseAudio Aspect\nCopyright 2022 Kyle Metscher\nhowdy@kylemetscher.com\nAspect is free software under the terms of the GNU GPL v3 or later.\n");
         printw("Found %d sinks.\nChoose a sink with up/down and select with space/enter.\n", sink_count);
         post_menu(sink_menu);
         refresh();

@@ -12,11 +12,20 @@
 Aspect is a terminal-based spectral visualizer written in C. It applies the Discrete Fourier Transform (DFT) to a series of audio samples captured from a playback sink to visualize frequency ranges in near-real time. The DFT is calculated using a Fast Fourier Transform (FFT) algorithm implemented with the FFTW library. 
 
 This version makes use of the PulseAudio sound server development API and is intended for use on those POSIX machines running PulseAudio (hence pa-aspect). I intend to build versions of the visualizer that work with other sound servers/implementations in the future, such as with PipeWire and ALSA.
+## Installation from source
+- Use your favorite C compiler, like GCC
+- Compile time dependencies: complex, fftw3, math, ncurses, pulse; check your distribution's package repositories or the links below
+- Runtime dependencies: suitable terminal emulator environment, a working PulseAudio server with at least one sink monitor
+- Link with: fftw3, m, menu, ncurses, pulse
+- Run the binary from your working directory
+- Play some tunes!
+## Recent changes
+- User prompted at startup to select a sink monitor for analysis
+- Licensing and copyleft
 ## In progress
 - Determining how to reduce client-side latency in retrieving samples. The server only reads data out when the read callback recognizes there's data to be read, and a DFT requires a non-negligible amount of samples in its input buffer to be both accurate and also spit out remotely interesting data. Presently the delay in acquiring enough samples for a compelling frequency bin set (>64) is taking too long
 - "Graphical" representation of frequency amplitudes with color and ASCII art in curses windows
 ## Planned
-- User selection of PulseAudio sinks (monitor specific applications/sinks instead of all sounds)
 - User definition of visual appearance (amplitude gradients, bar width, etc)
 ## Possibilities
 - Wrapping in an external shell application to make drawing easier; possibly "smooth" rendering out to make the delay in buffer retrieval less obvious?
@@ -27,6 +36,8 @@ The PulseAudio C API uses the snake_case convention. I am following the same con
 - Building on Ubuntu 20.04, Intel x86-64
 - Non-standard includes: ncurses, pulse, fftw3 
 - I'm tracking the compiled binary alongside source for analysis
+## License
+PulseAudio Aspect is licensed under the terms of the GNU GPL version 3 or later.
 ## Links
 - [FFTW](http://www.fftw.org/)
 - [My website](https://kylemetscher.com)
