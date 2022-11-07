@@ -22,8 +22,8 @@
 #define SAMPLERATE 48000
 // FIXME: set format and sampling based on chosen sink / pa params
 #define CHANNELS 1
-#define BUFSIZE 20
-#define OUTSIZE 9
+#define BUFSIZE 16
+#define OUTSIZE 7
 #define PEAK 32767.0
 
 typedef struct sink {
@@ -92,7 +92,11 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
                 double magnitude = sqrt(
                     (creal(out[i]) * creal(out[i])) + 
                     (cimag(out[i]) * cimag(out[i])));
-                int bar_height = floor(magnitude * 20);
+                int bar_height = floor(magnitude * 36);
+                for (unsigned int j = 0; j < bar_height; j++) {
+                    printw("#");
+                }
+                printw("#\n");
                 for (unsigned int j = 0; j < bar_height; j++) {
                     printw("#");
                 }
