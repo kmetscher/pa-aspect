@@ -17,13 +17,15 @@
 #include <signal.h>
 #include <math.h>
 #include <string.h>
+#include <wchar.h>
+#include <locale.h>
 
 #define FORMAT PA_SAMPLE_S16LE
 #define SAMPLERATE 48000
 // FIXME: set format and sampling based on chosen sink / pa params
 #define CHANNELS 1
-#define BUFSIZE 16
-#define OUTSIZE 7
+#define BUFSIZE 32
+#define OUTSIZE 15
 #define PEAK 32767.0
 
 typedef struct sink {
@@ -87,22 +89,27 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
         if (buf_index == BUFSIZE) {
             clear();
             fftw_execute(plan);
+            int picture[OUTSIZE];
             for (unsigned int i = 1; i < OUTSIZE; i++) {
                 // Starting from 1 because the DC at index 0 is just average amplitude
                 double magnitude = sqrt(
                     (creal(out[i]) * creal(out[i])) + 
                     (cimag(out[i]) * cimag(out[i])));
-                int bar_height = floor(magnitude * 36);
-                for (unsigned int j = 0; j < bar_height; j++) {
-                    printw("#");
-                }
-                printw("#\n");
-                for (unsigned int j = 0; j < bar_height; j++) {
-                    printw("#");
-                }
-                printw("#\n");
-                refresh();
+                int bar_height = floor(magnitude * (LINES / 3));
+                picture[i] = bar_height;
             }
+            for (int i = LINES - 1; i >= 0; i--) {
+                for (int j = (COLS / OUTSIZE); j < COLS; j++) {
+                    if (picture[j / OUTSIZE] >= i) {
+                        printw("█");
+                    }
+                    else {
+                        printw(" ");
+                    }
+                }
+                printw("\n");
+            }
+            refresh();
             buf_index = 0;
         }
         double normal_sample = (*stream_data / PEAK);
@@ -213,7 +220,8 @@ static void context_state_cb(pa_context *context, void *main_loop) {
     }
 }
 
-int main(int argc, char argv[]) {
+int main(int argc, char *argv[]) {
+    setlocale(LC_CTYPE, "");
     // Initialize DFT plan
     plan = fftw_plan_dft_r2c_1d(BUFSIZE, in, out, FFTW_MEASURE);
 
