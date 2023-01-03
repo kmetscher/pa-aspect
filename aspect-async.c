@@ -26,7 +26,7 @@
 #define CHANNELS 1
 #define BUFSIZE 32
 #define OUTSIZE 15
-#define PEAK 32767.0
+#define PEAK 131070.0
 
 typedef struct sink {
     char description[256];
@@ -45,6 +45,8 @@ static double complex out[OUTSIZE];
 static int sink_count = 0;
 static int sink_index = 0;
 static bool sink_cb_signal = false;
+static int TERMCOLS = 0;
+static int TERMROWS = 0;
 
 sink *sinks;
 fftw_plan plan;
@@ -62,6 +64,9 @@ static void stream_state_cb(pa_stream *stream, void *data) {
 }
 
 static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
+    int rows;
+    int cols;
+    getmaxyx(stdscr, rows, cols);
     if (getch() != ERR) {
         pa_mainloop_quit(main_loop, 0);
         return;
@@ -87,19 +92,28 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
             return;
         }
         if (buf_index == BUFSIZE) {
-            clear();
             fftw_execute(plan);
-            int picture[OUTSIZE];
+            int picture[OUTSIZE - 1];
             for (unsigned int i = 1; i < OUTSIZE; i++) {
                 // Starting from 1 because the DC at index 0 is just average amplitude
                 double magnitude = sqrt(
                     (creal(out[i]) * creal(out[i])) + 
                     (cimag(out[i]) * cimag(out[i])));
-                int bar_height = floor(magnitude * (LINES / 3));
-                picture[i] = bar_height;
+                int bar_height = floor(magnitude * LINES);
+                picture[i - 1] = bar_height;
             }
-            for (int i = LINES - 1; i >= 0; i--) {
-                for (int j = (COLS / OUTSIZE); j < COLS; j++) {
+            clear();
+            for (int i = rows; i >= 0; i--) {
+                for (int j = (OUTSIZE); j < cols; j++) {
+                    /*if (picture[j / OUTSIZE] >= (LINES * 2) / 3) {
+                        attron(COLOR_PAIR(3));
+                    }
+                    else if (picture[j / OUTSIZE] >= LINES / 3) {
+                        attron(COLOR_PAIR(2));
+                    }
+                    else {
+                        attron(COLOR_PAIR(1));
+                    }*/
                     if (picture[j / OUTSIZE] >= i) {
                         printw("█");
                     }
@@ -114,7 +128,6 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
         }
         double normal_sample = (*stream_data / PEAK);
         in[buf_index] = normal_sample;
-        refresh();
         buf_index++;
         if (pa_stream_drop(stream) != 0) {
             fprintf(stderr, "Dropping after peek failed\n");
@@ -246,7 +259,11 @@ int main(int argc, char *argv[]) {
     // Start curses
     initscr();
     nodelay(stdscr, true);
-    
+    /*start_color();
+    init_pair(3, COLOR_RED, COLOR_BLACK);
+    init_pair(2, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(1, COLOR_GREEN, COLOR_BLACK);
+    */
     // Iterate forever
     pa_mainloop_run(main_loop, NULL);
 
