@@ -8,6 +8,9 @@
  * You should have received a copy of the GNU General Public License along with this program. 
  * If not, see <https://www.gnu.org/licenses/>. */
 
+#include <pulse/def.h>
+#include <pulse/sample.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <ncurses.h>
 #include <menu.h>
@@ -93,7 +96,7 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
         }
         if (buf_index == BUFSIZE) {
             fftw_execute(plan);
-            int picture[OUTSIZE - 1];
+            int picture[OUTSIZE];
             for (unsigned int i = 1; i < OUTSIZE; i++) {
                 // Starting from 1 because the DC at index 0 is just average amplitude
                 double magnitude = sqrt(
@@ -104,7 +107,7 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
             }
             clear();
             for (int i = rows; i >= 0; i--) {
-                for (int j = (OUTSIZE); j < cols; j++) {
+                for (int j = 0/*(OUTSIZE)*/; j < cols - 1; j++) {
                     /*if (picture[j / OUTSIZE] >= (LINES * 2) / 3) {
                         attron(COLOR_PAIR(3));
                     }
@@ -203,8 +206,9 @@ static void sink_info_cb(pa_context *context, const pa_sink_info *info, int eol,
             return;
         }
         pa_stream_set_state_callback(stream, stream_state_cb, NULL);
+        pa_buffer_attr buffer_attrs = {.maxlength = (uint32_t) -1, .fragsize = pa_usec_to_bytes(11000, &sample_spec), .minreq = (uint32_t) -1, .prebuf = (uint32_t) -1, .tlength = (uint32_t) -1};
         pa_stream_set_read_callback(stream, stream_read_cb, NULL);
-        pa_stream_connect_record(stream, chosen_sink/*"alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink.monitor"*/, NULL, 0);
+        pa_stream_connect_record(stream, chosen_sink/*"alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__hw_sofhdadsp__sink.monitor"*/, &buffer_attrs, PA_STREAM_ADJUST_LATENCY);
         refresh();
         return;
     }
