@@ -47,7 +47,6 @@ static double in[BUFSIZE];
 static double complex out[OUTSIZE];
 static int sink_count = 0;
 static int sink_index = 0;
-static bool sink_cb_signal = false;
 static int TERMCOLS = 0;
 static int TERMROWS = 0;
 
@@ -102,7 +101,7 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
                 double magnitude = sqrt(
                     (creal(out[i]) * creal(out[i])) + 
                     (cimag(out[i]) * cimag(out[i])));
-                int bar_height = floor(magnitude * LINES);
+                int bar_height = floor(magnitude * (LINES));
                 picture[i - 1] = bar_height;
             }
             clear();
@@ -126,8 +125,8 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
                 }
                 printw("\n");
             }
-            refresh();
             buf_index = 0;
+            refresh();
         }
         double normal_sample = (*stream_data / PEAK);
         in[buf_index] = normal_sample;
