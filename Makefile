@@ -1,7 +1,12 @@
 objects = aspect-async.o options.o
 
+libs    = -lpulse -lm -lfftw3 -lncursesw -lmenuw
+
 aspect  : $(objects) 
-	cc -o aspect $(objects) -lpulse -lm -lfftw3 -lncursesw -lmenuw
+	gcc -o aspect $(objects) $(libs)
+
+debug   : $(objects)
+	gcc -o aspect $(objects) $(libs) -g -Wall
 
 .PHONY  : clean
 

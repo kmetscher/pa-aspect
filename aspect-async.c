@@ -22,6 +22,9 @@
 #include <string.h>
 #include <wchar.h>
 #include <locale.h>
+#include <argp.h>
+#define OPTIONS
+#include "options.c"
 
 #define FORMAT PA_SAMPLE_S16LE
 #define SAMPLERATE 48000
@@ -107,7 +110,7 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
             clear();
             for (int i = rows; i >= 0; i--) {
                 for (int j = 0/*(OUTSIZE)*/; j < cols - 1; j++) {
-                    /*if (picture[j / OUTSIZE] >= (LINES * 2) / 3) {
+                    if (picture[j / OUTSIZE] >= (LINES * 2) / 3) {
                         attron(COLOR_PAIR(3));
                     }
                     else if (picture[j / OUTSIZE] >= LINES / 3) {
@@ -115,7 +118,7 @@ static void stream_read_cb(pa_stream *stream, size_t bytes, void *user_data) {
                     }
                     else {
                         attron(COLOR_PAIR(1));
-                    }*/
+                    }
                     if (picture[j / OUTSIZE] >= i) {
                         printw("█");
                     }
@@ -237,51 +240,45 @@ static void context_state_cb(pa_context *context, void *main_loop) {
 }
 
 int main(int argc, char *argv[]) {
+    args arguments;
+    argp_parse(&parser, argc, argv, 0, 0, &arguments);
+
     setlocale(LC_CTYPE, "");
     // Initialize DFT plan
     plan = fftw_plan_dft_r2c_1d(BUFSIZE, in, out, FFTW_MEASURE);
 
     // Get the main loop
     main_loop = pa_mainloop_new();
-    printf("Made loop\n");
     
     // Get the API
     pa_mainloop_api *loop_api = pa_mainloop_get_api(main_loop);
-    printf("Made API\n");
     
     // Create context
     pa_context *context = pa_context_new(loop_api, "aspect");
-    printf("Made context\n");
 
     // Set callback and connect context to server
     pa_context_set_state_callback(context, &context_state_cb, NULL);
-    printf("Set state callback\n");
     pa_context_connect(context, NULL, PA_CONTEXT_NOFLAGS, NULL);
-    printf("Connected context\n");
 
     // Start curses
     initscr();
     nodelay(stdscr, true);
-    /*start_color();
-    init_pair(3, COLOR_RED, COLOR_BLACK);
-    init_pair(2, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(1, COLOR_GREEN, COLOR_BLACK);
-    */
+    if (arguments.colors == 1) {
+        start_color();
+        init_pair(3, COLOR_RED, COLOR_BLACK);
+        init_pair(2, COLOR_YELLOW, COLOR_BLACK);
+        init_pair(1, COLOR_GREEN, COLOR_BLACK);
+    }
     // Iterate forever
     pa_mainloop_run(main_loop, NULL);
 
     endwin();
-    printf("After loop, tearing down\n");
 
     plan = NULL;
-    printf("Destroyed plan\n");
 
     pa_context_disconnect(context);
-    printf("Context disconnected\n");
     pa_context_unref(context);
-    printf("Context unref'd\n");
 
     pa_mainloop_free(main_loop);
-    printf("Main loop freed\n");
     return 0;
 }
