@@ -1,4 +1,4 @@
-objects = aspect-async.o options.o
+objects = aspect-async.o 
 
 libs    = -lpulse -lm -lfftw3 -lncursesw -lmenuw
 

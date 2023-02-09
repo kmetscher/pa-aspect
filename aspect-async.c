@@ -23,8 +23,10 @@
 #include <wchar.h>
 #include <locale.h>
 #include <argp.h>
+#ifndef OPTIONS
 #define OPTIONS
 #include "options.c"
+#endif
 
 #define FORMAT PA_SAMPLE_S16LE
 #define SAMPLERATE 48000
